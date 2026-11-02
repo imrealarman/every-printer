@@ -2,7 +2,7 @@
 
 A Windows desktop app to preview, arrange and print documents, in the spirit of priPrinter. Open PDFs, pictures and text files (or print to the built-in virtual printer), then see exactly how the sheets will come out: several pages per sheet, booklets, posters, watermarks, redactions, ink saving. Print them, or save them as one PDF or as pictures.
 
-Built with WinUI 3 (Windows App SDK) on .NET 8, in the same style as the other Every apps. PDFs are drawn by the PDF reader built into Windows and written with PDFsharp, so everything works offline and nothing leaves your computer.
+Everything works offline and nothing leaves your computer.
 
 ## Features
 
