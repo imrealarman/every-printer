@@ -34,6 +34,8 @@
     <!-- Copied next to the exe so the running window can use it for the taskbar icon. -->
     <Content Include="Assets\AppIcon.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Assets\AppIcon.png" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Run elevated by the installer and by the Install printer button. -->
+    <Content Include="Assets\printer-setup.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

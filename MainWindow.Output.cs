@@ -272,6 +272,8 @@ public sealed partial class MainWindow
             inbox.Created += (_, e) => ReceiveFromInbox(e.FullPath);
             inbox.Changed += (_, e) => ReceiveFromInbox(e.FullPath);
             inbox.Renamed += (_, e) => ReceiveFromInbox(e.FullPath);
+            // Jobs printed while the app was closed are waiting in the folder.
+            foreach (var waiting in Directory.EnumerateFiles(app.InboxFolder, "*.pdf")) ReceiveFromInbox(waiting);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -319,14 +321,20 @@ public sealed partial class MainWindow
         });
     }
 
+    /// <summary>Files from a later launch (right-click Print, a print job): bring the window forward and open them.</summary>
+    public async Task ReceiveAsync(IReadOnlyList<string> paths)
+    {
+        Activate();
+        if (paths.Count > 0) await OpenFilesAsync(paths);
+    }
+
     private async Task InstallVirtualPrinterAsync(bool install)
     {
-        var port = Path.Combine(app.InboxFolder, "incoming.pdf");
         var result = await ShowDialogAsync(new ContentDialog
         {
             Title = install ? "Install the Every Printer printer?" : "Remove the Every Printer printer?",
             Content = install
-                ? "Windows will ask for administrator permission once. It adds a printer called “Every Printer” that saves what any program prints into the inbox folder, and Every Printer opens it here.\n\nIt uses Windows' own “Microsoft Print to PDF” driver, which must be turned on in Windows Features."
+                ? "Windows will ask for administrator permission once. It adds a printer called “Every Printer” that saves what any program prints into the inbox folder. Every Printer starts and opens it whenever you print to it.\n\nIt uses Windows' own “Microsoft Print to PDF” driver, which must be turned on in Windows Features."
                 : "Windows will ask for administrator permission. The printer and its port are removed; your files are not touched.",
             PrimaryButtonText = install ? "Install" : "Remove",
             CloseButtonText = "Cancel",
@@ -334,30 +342,18 @@ public sealed partial class MainWindow
         });
         if (result != ContentDialogResult.Primary) return;
 
-        var quoted = port.Replace("'", "''");
-        var inboxQuoted = app.InboxFolder.Replace("'", "''");
-        var script = install
-            ? $$"""
-              $ErrorActionPreference = 'Stop'
-              New-Item -ItemType Directory -Force -Path '{{inboxQuoted}}' | Out-Null
-              if (-not (Get-PrinterDriver -Name 'Microsoft Print To PDF' -ErrorAction SilentlyContinue)) { throw 'The Microsoft Print to PDF driver is not installed. Turn it on in Windows Features.' }
-              if (-not (Get-PrinterPort -Name '{{quoted}}' -ErrorAction SilentlyContinue)) { Add-PrinterPort -Name '{{quoted}}' }
-              if (-not (Get-Printer -Name '{{VirtualPrinterName}}' -ErrorAction SilentlyContinue)) { Add-Printer -Name '{{VirtualPrinterName}}' -DriverName 'Microsoft Print To PDF' -PortName '{{quoted}}' }
-              """
-            : $$"""
-              $ErrorActionPreference = 'SilentlyContinue'
-              Remove-Printer -Name '{{VirtualPrinterName}}'
-              Remove-PrinterPort -Name '{{quoted}}'
-              """;
+        var script = Path.Combine(AppContext.BaseDirectory, "Assets", "printer-setup.ps1");
+        if (!File.Exists(script)) { ShowToast("The printer setup script is missing. Reinstall Every Printer."); return; }
+        var exe = Environment.ProcessPath ?? "";
+        var user = $"{Environment.UserDomainName}\\{Environment.UserName}";
+        var arguments = $"-NoProfile -ExecutionPolicy Bypass -File \"{script}\" -Action {(install ? "Install" : "Remove")} -Inbox \"{app.InboxFolder}\" -Exe \"{exe}\" -User \"{user}\"";
 
-        var file = Path.Combine(Path.GetTempPath(), $"everyprinter-{Guid.NewGuid():N}.ps1");
-        await File.WriteAllTextAsync(file, script);
         SetBusy(true, install ? "Installing the printer…" : "Removing the printer…");
         try
         {
             var exit = await Task.Run(() =>
             {
-                var start = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -File \"{file}\"")
+                var start = new ProcessStartInfo("powershell.exe", arguments)
                 {
                     UseShellExecute = true, Verb = "runas", WindowStyle = ProcessWindowStyle.Hidden,
                 };
@@ -383,7 +379,6 @@ public sealed partial class MainWindow
         }
         finally
         {
-            TryDelete(file);
             SetBusy(false);
         }
     }

@@ -40,7 +40,7 @@ Built with WinUI 3 (Windows App SDK) on .NET 8, in the same style as the other E
 - **Save as pictures**: PNG, JPEG, TIFF, BMP or TGA.
 - **Themes**: save every setting as a named theme, switch with one pick, import and export as JSON files.
 - **Print history** you can search.
-- **Virtual printer**: install a printer called "Every Printer" and anything you print to it from any program opens here.
+- **Virtual printer**: install a printer called "Every Printer" (the installer offers it) and anything you print to it from any program opens here, even when the app is closed. The installer can also add "Print with Every Printer" to the right-click menu of PDFs, pictures and text files.
 
 ## Requirements
 
