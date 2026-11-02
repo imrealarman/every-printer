@@ -21,7 +21,7 @@ public sealed class SourceJob
     public string[]? TextPages { get; set; }
 }
 
-public enum AnnotationKind { Redact, Highlight, Text }
+public enum AnnotationKind { Redact, Highlight, Text, Picture }
 
 /// <summary>A mark on one page, positioned as fractions (0..1) of the unrotated page.</summary>
 public sealed class Annotation
@@ -106,12 +106,20 @@ public sealed class DocumentSet
         Changed();
     }
 
-    public void InsertBlank(int at, float width, float height)
+    public PageRef InsertBlank(int at, float width, float height, string name = "Blank page")
     {
-        var job = NewJob("Blank page", "", JobKind.Blank);
+        var job = NewJob(name, "", JobKind.Blank);
         job.PageCount = 1;
-        AddPages([new PageRef { Job = job, Index = 0, Width = width, Height = height }], at);
+        var page = new PageRef { Job = job, Index = 0, Width = width, Height = height };
+        AddPages([page], at);
+        return page;
     }
+
+    /// <summary>Saves an undo step before a drag that will change a page in place with <see cref="Touch"/>.</summary>
+    public void BeginEdit() => Checkpoint();
+
+    /// <summary>Marks the pages as changed after an in-place edit.</summary>
+    public void Touch() => Changed();
 
     public void Duplicate(IReadOnlyCollection<int> indexes)
     {

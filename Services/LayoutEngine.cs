@@ -371,6 +371,9 @@ public static class LayoutEngine
             case AnnotationKind.Highlight:
                 sheet.Front.Add(new RectOverlay(rect, a.Color, 0.4, null, 0, p.Clip));
                 break;
+            case AnnotationKind.Picture when a.Text.Length > 0:
+                sheet.Front.Add(new PictureOverlay(a.Text, rect, p.Rotation, p.Clip));
+                break;
             case AnnotationKind.Text when a.Text.Length > 0:
                 sheet.Front.Add(new TextOverlay(a.Text, "Segoe UI", Math.Max(2, a.FontSize * p.Page.Height * p.Scale), false, false, a.Color, 1, 0,
                     rect, Anchor.TopLeft, 0, 0, false, p.Clip));

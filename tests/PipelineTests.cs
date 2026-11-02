@@ -47,6 +47,64 @@ public sealed class PipelineTests : IDisposable
         return (doc, pages);
     }
 
+    private string RedSquare()
+    {
+        var path = Path.Combine(dir, "red.png");
+        using var bmp = new Bitmap(100, 100);
+        using (var g = Graphics.FromImage(bmp)) g.Clear(Color.FromArgb(255, 220, 0, 0));
+        bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+        return path;
+    }
+
+    private static bool IsRed(Color c) => c.R > 180 && c.G < 60 && c.B < 60;
+
+    [Fact]
+    public void A_picture_on_a_blank_page_is_drawn_where_it_was_moved_to()
+    {
+        var doc = new DocumentSet();
+        var (w, h) = (Paper.Mm(148), Paper.Mm(210)); // A5
+        var page = doc.InsertBlank(0, w, h);
+        var picture = new Annotation { Kind = AnnotationKind.Picture, Text = RedSquare(), Rect = new RectangleF(0.1f, 0.1f, 0.2f, 0.2f * w / h) };
+        doc.AddAnnotation(0, picture);
+        var s = new PrintSettings { Paper = "A5" };
+
+        using (var bitmap = new SheetRenderer(source).Render(LayoutEngine.Build(doc.Pages, s)[0], s, 1f))
+        {
+            var scale = bitmap.Width / w;
+            Assert.True(IsRed(bitmap.GetPixel((int)(0.2f * w * scale), (int)(0.2f * h * scale))));
+            Assert.False(IsRed(bitmap.GetPixel((int)(0.7f * w * scale), (int)(0.7f * h * scale))));
+        }
+
+        doc.BeginEdit();
+        picture.Rect = new RectangleF(0.6f, 0.6f, picture.Rect.Width, picture.Rect.Height);
+        doc.Touch();
+
+        using (var bitmap = new SheetRenderer(source).Render(LayoutEngine.Build(doc.Pages, s)[0], s, 1f))
+        {
+            var scale = bitmap.Width / w;
+            Assert.False(IsRed(bitmap.GetPixel((int)(0.2f * w * scale), (int)(0.2f * h * scale))));
+            Assert.True(IsRed(bitmap.GetPixel((int)(0.7f * w * scale), (int)(0.7f * h * scale))));
+        }
+
+        doc.Undo();
+        Assert.Equal(0.1f, doc.Pages[0].Annotations[0].Rect.X);
+    }
+
+    [Fact]
+    public void A_picture_on_a_blank_page_is_saved_in_the_pdf()
+    {
+        var doc = new DocumentSet();
+        doc.InsertBlank(0, Paper.Mm(420), Paper.Mm(594)); // A2
+        doc.AddAnnotation(0, new Annotation { Kind = AnnotationKind.Picture, Text = RedSquare(), Rect = new RectangleF(0.2f, 0.2f, 0.4f, 0.3f) });
+        var s = new PrintSettings { Paper = "A2" };
+        var output = Path.Combine(dir, "picture.pdf");
+        var result = PdfExporter.Save(LayoutEngine.Build(doc.Pages, s), s, new SheetRenderer(source), output, "t");
+        Assert.Equal(1, result.Sheets);
+        using var saved = PdfReader.Open(output, PdfDocumentOpenMode.Import);
+        Assert.Single(saved.Pages);
+        Assert.True(new FileInfo(output).Length > 500);
+    }
+
     [Fact]
     public void Writes_a_sample_document_for_manual_checks()
     {

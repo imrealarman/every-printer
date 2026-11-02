@@ -109,6 +109,9 @@ public sealed class SheetRenderer(PageSource source)
             case ImageOverlay i:
                 DrawImageOverlay(g, i);
                 break;
+            case PictureOverlay pic:
+                DrawPicture(g, pic);
+                break;
             case FormOverlay f:
                 DrawForm(g, sheet, f, settings, pxPerPoint);
                 break;
@@ -177,6 +180,25 @@ public sealed class SheetRenderer(PageSource source)
             g.DrawImage(image, Points(new RectangleF(-w / 2, -h / 2, w, h)), new RectangleF(0, 0, image.Width, image.Height), GraphicsUnit.Pixel, attributes);
             g.Restore(inner);
         }
+    }
+
+    private void DrawPicture(Graphics g, PictureOverlay o)
+    {
+        var image = LoadOverlayImage(o.Path);
+        if (image is null) return;
+        // The rectangle is on the sheet; a page turned 90 degrees has its picture drawn upright and turned with it.
+        var odd = o.Rotation % 180 != 0;
+        var w = odd ? o.Rect.Height : o.Rect.Width;
+        var h = odd ? o.Rect.Width : o.Rect.Height;
+        var state = g.Save();
+        try
+        {
+            if (o.Clip is { } clip) g.SetClip(clip, CombineMode.Intersect);
+            g.TranslateTransform(o.Rect.X + o.Rect.Width / 2, o.Rect.Y + o.Rect.Height / 2);
+            g.RotateTransform(o.Rotation);
+            g.DrawImage(image, Points(new RectangleF(-w / 2, -h / 2, w, h)), new RectangleF(0, 0, image.Width, image.Height), GraphicsUnit.Pixel);
+        }
+        finally { g.Restore(state); }
     }
 
     private void DrawForm(Graphics g, Sheet sheet, FormOverlay f, PrintSettings settings, float pxPerPoint)

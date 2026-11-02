@@ -13,6 +13,9 @@ public sealed record TextOverlay(
 public sealed record ImageOverlay(
     string Path, RectangleF Bounds, Anchor Anchor, float OffsetX, float OffsetY, double WidthFraction, double Opacity, double Angle, bool Tile) : Overlay;
 
+/// <summary>A picture placed on a page, stretched into <see cref="Rect"/> (already mapped onto the sheet). Rotated with the page.</summary>
+public sealed record PictureOverlay(string Path, RectangleF Rect, int Rotation, RectangleF? Clip) : Overlay;
+
 public sealed record RectOverlay(RectangleF Rect, string? Fill, double FillOpacity, string? Stroke, float StrokeWidth, RectangleF? Clip) : Overlay;
 
 public sealed record LineOverlay(PointF From, PointF To, string Color, float Width) : Overlay;

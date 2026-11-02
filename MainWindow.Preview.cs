@@ -364,6 +364,8 @@ public sealed partial class MainWindow
         moved = false;
         pressPoint = lastPoint = point.Position;
         dragPlacement = point.Properties.IsMiddleButtonPressed ? null : PlacementAt(point.Position);
+        dragPicture = null;
+        if (dragPlacement is not null) BeginPictureDrag(dragPlacement, point.Position);
         PreviewHost.CapturePointer(e.Pointer);
 
         if (tool == "Measure" && !point.Properties.IsMiddleButtonPressed)
@@ -406,6 +408,10 @@ public sealed partial class MainWindow
             Canvas.SetLeft(MeasureLabel, position.X + 10);
             Canvas.SetTop(MeasureLabel, position.Y + 10);
         }
+        else if (dragPicture is not null && dragPlacement is not null)
+        {
+            if (moved) DragPicture(dragPlacement, position);
+        }
         else if (moved)
         {
             // Everything else drags the view.
@@ -425,7 +431,8 @@ public sealed partial class MainWindow
         var position = e.GetCurrentPoint(PreviewHost).Position;
         RubberBand.Visibility = Visibility.Collapsed;
 
-        if (tool is "Crop" or "Redact" or "Highlight" && dragPlacement is not null && moved) FinishRegion(dragPlacement, position);
+        if (dragPicture is not null && moved) EndPictureDrag();
+        else if (tool is "Crop" or "Redact" or "Highlight" && dragPlacement is not null && moved) FinishRegion(dragPlacement, position);
         else if (tool == "Text" && !moved && dragPlacement is not null) _ = AddTextAsync(dragPlacement, position);
         else if (tool == "Select" && !moved) SelectAt(position);
         else if (moved && tool is not ("Measure" or "Crop" or "Redact" or "Highlight")) RequestRender();
@@ -437,6 +444,7 @@ public sealed partial class MainWindow
         if (!pressed) return;
         pressed = false;
         RubberBand.Visibility = Visibility.Collapsed;
+        EndPictureDrag();
         dragPlacement = null;
         RequestRender();
     }
@@ -446,10 +454,12 @@ public sealed partial class MainWindow
         if (tool == "Loupe") { loupeCts?.Cancel(); LoupeFrame.Visibility = Visibility.Collapsed; }
     }
 
-    private Windows.Foundation.Rect PlacementViewRect(Placement p)
+    private Windows.Foundation.Rect PlacementViewRect(Placement p) => ViewRect(p.Dest);
+
+    private Windows.Foundation.Rect ViewRect(RectangleF r)
     {
         var sheet = sheets[current];
-        float x = p.Dest.X, y = p.Dest.Y, w = p.Dest.Width, h = p.Dest.Height;
+        float x = r.X, y = r.Y, w = r.Width, h = r.Height;
         if (sheet.FlipHorizontal) x = sheet.Width - x - w;
         if (sheet.FlipVertical) y = sheet.Height - y - h;
         return new Windows.Foundation.Rect(panX + x * viewScale, panY + y * viewScale, w * viewScale, h * viewScale);
@@ -457,7 +467,9 @@ public sealed partial class MainWindow
 
     private void SelectAt(Windows.Foundation.Point position)
     {
-        selected = PlacementAt(position)?.Page;
+        var placement = PlacementAt(position);
+        selected = placement?.Page;
+        selectedPicture = placement is null ? null : PictureAt(placement, position);
         UpdateSelectionBox();
     }
 
@@ -465,7 +477,9 @@ public sealed partial class MainWindow
     {
         var placement = selected is null || sheets.Count == 0 || current >= sheets.Count ? null : sheets[current].Placements.FirstOrDefault(p => p.Page == selected);
         if (placement is null) { SelectionBox.Visibility = Visibility.Collapsed; return; }
-        var r = PlacementViewRect(placement);
+        var r = selectedPicture is not null && selected is not null && selected.Annotations.Contains(selectedPicture)
+            ? ViewRect(placement.MapRect(selectedPicture.Rect))
+            : PlacementViewRect(placement);
         Canvas.SetLeft(SelectionBox, r.X);
         Canvas.SetTop(SelectionBox, r.Y);
         SelectionBox.Width = Math.Max(1, r.Width);

@@ -191,6 +191,9 @@ public static class PdfExporter
             case ImageOverlay i:
                 DrawImageOverlay(g, i, images);
                 break;
+            case PictureOverlay pic:
+                DrawPicture(g, pic, images);
+                break;
             case FormOverlay f:
                 DrawForm(g, sheet, f, forms, images);
                 break;
@@ -232,6 +235,21 @@ public static class PdfExporter
             g.DrawImage(image, -w / 2, -h / 2, w, h);
             g.Restore(inner);
         }
+    }
+
+    private static void DrawPicture(XGraphics g, PictureOverlay o, List<XImage> images)
+    {
+        if (!File.Exists(o.Path)) return;
+        var image = XImage.FromFile(o.Path);
+        images.Add(image);
+        var odd = o.Rotation % 180 != 0;
+        double w = odd ? o.Rect.Height : o.Rect.Width, h = odd ? o.Rect.Width : o.Rect.Height;
+        var state = g.Save();
+        if (o.Clip is { } clip) g.IntersectClip(ToRect(clip));
+        g.TranslateTransform(o.Rect.X + o.Rect.Width / 2.0, o.Rect.Y + o.Rect.Height / 2.0);
+        g.RotateTransform(o.Rotation);
+        g.DrawImage(image, -w / 2, -h / 2, w, h);
+        g.Restore(state);
     }
 
     private static void DrawForm(XGraphics g, Sheet sheet, FormOverlay f, List<XPdfForm> forms, List<XImage> images)

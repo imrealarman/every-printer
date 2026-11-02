@@ -24,6 +24,7 @@ Everything works offline and nothing leaves your computer.
 ### Pages
 - Open several files into one job, remove, duplicate, move, rotate and insert blank pages. Undo and redo everything.
 - Print a page range (`1-5, 8, 10-`), odd or even pages, reverse order, and leave out blank pages.
+- Start from a blank page of any paper size (A0 to A6, Letter and others, or a custom size, portrait or landscape), add a picture to it, then drag the picture around the page, make it bigger or smaller, fit it to the page or centre it.
 - Crop with the mouse, highlight, add text, and redact. A page with redactions is printed as a picture, so the covered text is really gone.
 
 ### Marks

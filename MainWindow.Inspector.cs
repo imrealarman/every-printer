@@ -332,9 +332,16 @@ public sealed partial class MainWindow
         p.Children.Add(Header("Selected page"));
         p.Children.Add(Note("Click a page in the preview to select it. With nothing selected, these act on the sheet you are viewing."));
         p.Children.Add(Pair(Action_("Insert blank page after", InsertBlankAfter), Action_("Duplicate", DuplicateTargets)));
+        p.Children.Add(Action_("New blank page (A0–A6, custom)…", () => _ = NewBlankPageAsync()));
         p.Children.Add(Pair(Action_("Move earlier", () => MoveTargets(-1)), Action_("Move later", () => MoveTargets(+1))));
         p.Children.Add(Pair(Action_("Remove", DeleteTargets), Action_("Restore removed pages", RestoreRemoved)));
-        p.Children.Add(Action_("Remove all marks on this page (redactions, highlights, text)", () =>
+        p.Children.Add(Header("Picture on the page"));
+        p.Children.Add(Note("Add a picture to the selected page, then drag it in the preview to move it."));
+        p.Children.Add(Action_("Add picture…", () => _ = AddPictureAsync()));
+        p.Children.Add(Pair(Action_("Smaller", () => ResizePicture(0.9f)), Action_("Bigger", () => ResizePicture(1.1f))));
+        p.Children.Add(Pair(Action_("Fit to page", FitPicture), Action_("Centre", CentrePicture)));
+        p.Children.Add(Action_("Remove picture", RemovePicture));
+        p.Children.Add(Action_("Remove all marks on this page (redactions, highlights, text, pictures)", () =>
         {
             var targets = TargetIndexes();
             if (targets.Count == 0) return;
